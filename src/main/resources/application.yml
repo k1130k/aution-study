@@ -1,18 +1,15 @@
 spring:
   application:
     name: auction
+
   jpa:
     properties:
       hibernate:
         format_sql: true
+
+  profiles:
+    active: local
+
 logging:
   level:
     org.hibernate.SQL: debug
----
-spring:
-  profiles:
-    active: local
----
-spring:
-  profiles:
-    active: prod

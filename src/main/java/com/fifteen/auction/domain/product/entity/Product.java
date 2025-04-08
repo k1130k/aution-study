@@ -22,9 +22,7 @@ public class Product {
     private Long id;
     private String title;
     private String description;
-    private String condition;
-    private String includedItems;
 
-    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL)
-    private MarketPrice marketPrice;
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MarketPrice> marketPrices = new ArrayList<>();
 }

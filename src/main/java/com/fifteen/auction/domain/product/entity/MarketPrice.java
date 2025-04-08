@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -18,13 +19,12 @@ public class MarketPrice {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private Product product;
-
+    private LocalDate priceDate;
     private Long minMarketPrice;
     private Long maxMarketPrice;
-
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

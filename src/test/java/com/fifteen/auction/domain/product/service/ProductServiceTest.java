@@ -3,7 +3,7 @@ package com.fifteen.auction.domain.product.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fifteen.auction.AuctionApplication;
-import com.fifteen.auction.domain.product.dto.GPTPriceResponseDto;
+import com.fifteen.auction.domain.product.dto.GPTPriceResponse;
 import com.fifteen.auction.domain.product.entity.MarketPrice;
 import com.fifteen.auction.domain.product.entity.Product;
 import com.fifteen.auction.domain.product.repository.MarketPriceRepository;
@@ -14,13 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
-import java.time.LocalDateTime;
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -39,8 +32,7 @@ class ProductServiceTest {
     @Autowired
     private MarketPriceRepository marketPriceRepository;
 
-
-    @MockitoBean
+    @Autowired
     private OpenAIClient openAIClient;
 
     @Test
@@ -49,12 +41,9 @@ class ProductServiceTest {
         Product product = Product.builder()
                 .title("아이폰 13 미니")
                 .description("생활 기스 약간 있음")
-                .condition("중고")
-                .includedItems("충전기 포함")
                 .build();
 
-        GPTPriceResponseDto gptPriceResponse = new GPTPriceResponseDto(30000L, 50000L);
-        when(openAIClient.callGptForPrice(anyString())).thenReturn(gptPriceResponse);
+        GPTPriceResponse gptPriceResponse = new GPTPriceResponse(30000L, 50000L);
 
         // when
         Product savedProduct = productService.createProduct(product);

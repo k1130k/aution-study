@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class GPTPriceResponseDto {
+public class GPTPriceResponse {
     private final Long min;
     private final Long max;
 }
