@@ -2,7 +2,7 @@ package com.fifteen.auction.global.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fifteen.auction.domain.product.dto.GPTHistoricalPrice;
+import com.fifteen.auction.domain.product.dto.GPTPricePredictionResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -27,7 +27,7 @@ public class OpenAIClient {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public List<GPTHistoricalPrice> callGptForHistoricalPrices(String title, String description) {
+    public List<GPTPricePredictionResponse> callGptForHistoricalPrices(String title, String description) {
         LocalDate today = LocalDate.now();
         List<LocalDate> dates = IntStream.rangeClosed(1, 3)
                 .mapToObj(i -> today.minusMonths(i).withDayOfMonth(1))
@@ -83,7 +83,7 @@ public class OpenAIClient {
 
             return objectMapper.readValue(
                     content,
-                    objectMapper.getTypeFactory().constructCollectionType(List.class, GPTHistoricalPrice.class)
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, GPTPricePredictionResponse.class)
             );
 
         } catch (Exception e) {

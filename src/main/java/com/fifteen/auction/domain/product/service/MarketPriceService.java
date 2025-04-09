@@ -2,9 +2,9 @@ package com.fifteen.auction.domain.product.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fifteen.auction.domain.product.dto.GPTHistoricalPrice;
+import com.fifteen.auction.domain.product.dto.GPTPricePredictionResponse;
 import com.fifteen.auction.domain.product.dto.MarketPriceResponse;
-import com.fifteen.auction.domain.product.dto.MarketPriceSummaryResponse;
+import com.fifteen.auction.domain.product.dto.MarketPriceFullResponse;
 import com.fifteen.auction.domain.product.entity.MarketPrice;
 import com.fifteen.auction.domain.product.entity.Product;
 import com.fifteen.auction.domain.product.repository.MarketPriceRepository;
@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
-public class ProductService {
+public class MarketPriceService {
 
     private final ProductRepository productRepository;
     private final MarketPriceRepository marketPriceRepository;
@@ -37,6 +37,7 @@ public class ProductService {
     private static final String CACHE_PREFIX = "price:";
     private static final long TTL_HOURS = 24L;
 
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     // 상품 등록 + GPT 시세 예측 및 저장
     @Transactional
@@ -46,9 +47,9 @@ public class ProductService {
         return savedProduct;
     }
 
-    //GPT로 시세 예측 → 과거 3개월은 DB, 오늘은 Redis 캐시에 저장
+    //GPT로 시세 예측 → 최근 3개월 시세는 DB, 오늘은 Redis 캐시에 저장
     public void predictAndSavePrice(Product product) {
-        List<GPTHistoricalPrice> historicalPrices = openAIClient.callGptForHistoricalPrices(
+        List<GPTPricePredictionResponse> historicalPrices = openAIClient.callGptForHistoricalPrices(
                 product.getTitle(),
                 product.getDescription()
         );
@@ -56,16 +57,16 @@ public class ProductService {
         Set<LocalDate> savedDates = new HashSet<>();
 
         for (int i = 0; i < historicalPrices.size(); i++) {
-            GPTHistoricalPrice dto = historicalPrices.get(i);
+            GPTPricePredictionResponse dto = historicalPrices.get(i);
             LocalDate priceDate = LocalDate.parse(dto.getDate());
 
             //  GPT 응답 내 중복 날짜 방지
             if (!savedDates.add(priceDate)) continue;
 
             boolean isToday = (i == historicalPrices.size() - 1);
-            boolean existsInDb = marketPriceRepository.existsByProductIdAndPriceDate(product.getId(), priceDate);
+            boolean alreadySaved = marketPriceRepository.existsByProductIdAndPriceDate(product.getId(), priceDate);
 
-            if (!isToday && existsInDb) continue;
+            if (!isToday && alreadySaved) continue;
 
             MarketPrice price = MarketPrice.builder()
                     .product(product)
@@ -89,41 +90,34 @@ public class ProductService {
         }
     }
 
-   //오늘 시세 조회 (Redis 캐시)
-    public MarketPriceResponse getMarketPrice(Long productId) {
-        String cacheKey = CACHE_PREFIX + productId;
-        Object raw = redisTemplate.opsForValue().get(cacheKey);
+
+    //오늘 + 최근 3개월 시세조회
+    @Transactional(readOnly = true)
+    public MarketPriceFullResponse getMarketPriceFullResponse(Long productId) {
+        // 1. 오늘 시세 (Redis)
+        Object raw = redisTemplate.opsForValue().get(CACHE_PREFIX + productId);
+        MarketPrice todayEntity = null;
 
         if (raw instanceof LinkedHashMap map) {
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.registerModule(new JavaTimeModule());
-            MarketPrice cached = objectMapper.convertValue(map, MarketPrice.class);
-            return MarketPriceResponse.fromEntity(cached);
+            todayEntity = objectMapper.convertValue(map, MarketPrice.class);
+        } else if (raw instanceof MarketPrice cached) {
+            todayEntity = cached;
         }
 
-        if (raw instanceof MarketPrice cached) {
-            return MarketPriceResponse.fromEntity(cached);
+        if (todayEntity == null) {
+            throw new ServerException(ErrorCode.MARKET_PRICE_NOT_FOUND);
         }
 
-        throw new ServerException(ErrorCode.MARKET_PRICE_NOT_FOUND);
-    }
+        MarketPriceResponse today = MarketPriceResponse.fromEntity(todayEntity);
 
-     // DB에서 최근 3개월 시세 조회
-    public List<MarketPriceResponse> getRecentMarketPricesFromDB(Long productId) {
-        return marketPriceRepository
+        // 2. DB에서 최근 3개월 시세
+        List<MarketPriceResponse> history = marketPriceRepository
                 .findAllByProductIdOrderByPriceDateAsc(productId)
                 .stream()
                 .map(MarketPriceResponse::fromEntity)
                 .toList();
-    }
 
-
-    //오늘 + 최근 3개월 시세 통합 조회
-    public MarketPriceSummaryResponse getFullMarketPriceInfo(Long productId) {
-        MarketPriceResponse today = getMarketPrice(productId);                         // Redis
-        List<MarketPriceResponse> history = getRecentMarketPricesFromDB(productId);   // DB
-
-        return MarketPriceSummaryResponse.builder()
+        return MarketPriceFullResponse.builder()
                 .todayPrice(today)
                 .historicalPrices(history)
                 .build();

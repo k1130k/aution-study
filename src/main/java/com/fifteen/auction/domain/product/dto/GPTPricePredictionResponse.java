@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class GPTHistoricalPrice {
+public class GPTPricePredictionResponse {
     private String date;
     private Long min;
     private Long max;

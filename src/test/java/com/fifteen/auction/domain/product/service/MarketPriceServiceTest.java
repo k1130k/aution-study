@@ -3,7 +3,6 @@ package com.fifteen.auction.domain.product.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fifteen.auction.AuctionApplication;
-import com.fifteen.auction.domain.product.dto.GPTPriceResponse;
 import com.fifteen.auction.domain.product.entity.MarketPrice;
 import com.fifteen.auction.domain.product.entity.Product;
 import com.fifteen.auction.domain.product.repository.MarketPriceRepository;
@@ -18,10 +17,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(classes = {AuctionApplication.class, RedisConfig.class})
-class ProductServiceTest {
+class MarketPriceServiceTest {
 
     @Autowired
-    private ProductService productService;
+    private MarketPriceService marketPriceService;
 
     @Autowired
     private ProductRepository productRepository;
@@ -46,7 +45,7 @@ class ProductServiceTest {
         GPTPriceResponse gptPriceResponse = new GPTPriceResponse(30000L, 50000L);
 
         // when
-        Product savedProduct = productService.createProduct(product);
+        Product savedProduct = marketPriceService.createProduct(product);
         String cacheKey = "price:" + savedProduct.getId();
 
         // then
