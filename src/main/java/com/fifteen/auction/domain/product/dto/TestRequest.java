@@ -10,7 +10,7 @@ public class TestRequest {
 
     public Product toEntity() {
         return Product.builder()
-                .title(title)
+                .name(title)
                 .description(description)
                 .build();
     }
